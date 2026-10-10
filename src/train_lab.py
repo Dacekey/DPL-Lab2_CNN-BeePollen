@@ -40,7 +40,7 @@ RUNS = (
 def arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-dir", type=Path, required=True,
-                        help="Folder containing one subfolder per class.")
+                        help="Dataset root; supports class folders or original flat P/NP filenames.")
     parser.add_argument("--corrections-csv", type=Path,
                         help="CSV with relative_path,new_label columns.")
     parser.add_argument("--output-dir", type=Path, default=Path("outputs"))
@@ -74,15 +74,42 @@ def setup(seed: int) -> tf.distribute.Strategy:
 def samples(data_dir: Path) -> pd.DataFrame:
     if not data_dir.is_dir():
         raise FileNotFoundError(f"DATA_DIR does not exist: {data_dir}")
+    image_paths = [path for path in sorted(data_dir.rglob("*"))
+                   if path.is_file() and path.suffix.lower() in EXTENSIONS]
+    if not image_paths:
+        raise ValueError(f"No supported image files found below DATA_DIR: {data_dir}")
+
+    # Supports both common layouts:
+    # 1) class folders, e.g. data/pollen/*.jpg and data/no_pollen/*.jpg
+    # 2) the original PollenDataset: a single images/ folder where P*.jpg is
+    #    pollen and NP*.jpg is non-pollen.
+    parent_names = {path.parent.name for path in image_paths}
+    flat_original_layout = len(parent_names) == 1
     rows = []
-    for path in sorted(data_dir.rglob("*")):
-        if path.is_file() and path.suffix.lower() in EXTENSIONS:
-            rows.append({"path": str(path.resolve()),
-                         "relative_path": path.relative_to(data_dir).as_posix(),
-                         "label": path.parent.name})
+    unrecognised = []
+    for path in image_paths:
+        if flat_original_layout:
+            filename = path.name.upper()
+            if filename.startswith("NP"):
+                label = "no_pollen"
+            elif filename.startswith("P"):
+                label = "pollen"
+            else:
+                unrecognised.append(path.name)
+                continue
+        else:
+            label = path.parent.name
+        rows.append({"path": str(path.resolve()),
+                     "relative_path": path.relative_to(data_dir).as_posix(),
+                     "label": label})
+    if unrecognised:
+        raise ValueError("Flat image layout requires filenames beginning with P or NP. "
+                         f"Unrecognised examples: {unrecognised[:5]}")
     frame = pd.DataFrame(rows)
-    if frame.empty or frame.label.nunique() < 2:
-        raise ValueError("No class-organised images found. Point DATA_DIR at the class-folder parent.")
+    if frame.label.nunique() < 2:
+        raise ValueError("Only one class was found. Check DATA_DIR and the dataset layout.")
+    print("Detected layout:", "flat P/NP filename labels" if flat_original_layout else "class folders")
+    print("Class counts:", frame.label.value_counts().to_dict())
     return frame
 
 

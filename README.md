@@ -21,10 +21,10 @@ manifest and experiment configuration. Test labels are never used for model sele
 4. Review candidate images manually and create a small Kaggle Dataset containing `corrections.csv`. Its columns are `relative_path,old_label,new_label,reason`.
 5. Add that correction dataset as Input, set `RUN_MODE = 'corrected'` and set `CORRECTIONS_CSV` to its path. Run the notebook again to create the fourth ZIP.
 
-Kaggle mounts inputs at `/kaggle/input/<dataset-slug>/`. The exact slug is shown in the Input panel. `DATA_DIR` must be the directory that contains the class folders, for example:
+Kaggle mounts inputs at `/kaggle/input/<dataset-slug>/`. For the original Ivan Feliciano dataset, set `DATA_DIR` to the **dataset root**; the script searches below it and derives labels from the original filenames: `P*.jpg` = `pollen`, `NP*.jpg` = `no_pollen`. It also supports the alternative layout with one folder per class. The exact slug is shown in the Input panel, for example:
 
 ```python
-DATA_DIR = "/kaggle/input/honey-bee-pollen/Bee Pollen Images"
+DATA_DIR = "/kaggle/input/honey-bee-pollen"
 CORRECTIONS_CSV = "/kaggle/input/bee-pollen-corrections/corrections.csv"
 ```
 
