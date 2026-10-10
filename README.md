@@ -40,7 +40,7 @@ There is no valid automatic way to correct labels from a model's predictions. Th
 python src/train_lab.py --data-dir /path/to/bee-pollen --export-manifest-only
 ```
 
-It writes `label_audit_manifest.csv`. Fill `new_label` only for labels you have verified are wrong. The corrected run requires a non-empty corrections file, so the fourth experiment genuinely uses corrected data.
+It writes `label_audit_manifest.csv`. Fill `new_label` only for labels you have verified are wrong. If the audit finds no verified errors, use the supplied empty `assets/corrections.csv`; the dedicated Phase 2 notebook records this honestly as an audited-label run with `applied_label_corrections: 0`.
 
 ## Local usage
 

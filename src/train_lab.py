@@ -50,6 +50,8 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--batch-per-replica", type=int, default=32)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--export-manifest-only", action="store_true")
+    parser.add_argument("--allow-empty-corrections", action="store_true",
+                        help="Permit an audited corrections CSV with zero verified label changes.")
     parser.add_argument("--run-mode", choices=("original", "corrected", "all"), default="all",
                         help="original: runs 1-3; corrected: run 4 only; all: all four (needs corrections).")
     return parser.parse_args()
@@ -138,15 +140,16 @@ def audit_manifest(frame: pd.DataFrame, output_dir: Path) -> Path:
     return result
 
 
-def corrected_frame(frame: pd.DataFrame, csv_path: Path | None) -> pd.DataFrame:
+def corrected_frame(frame: pd.DataFrame, csv_path: Path | None,
+                    allow_empty: bool = False) -> tuple[pd.DataFrame, int]:
     if csv_path is None or not csv_path.is_file():
         raise FileNotFoundError("Run 4 requires --corrections-csv; see README.md.")
     edits = pd.read_csv(csv_path, comment="#").fillna("")
     if not {"relative_path", "new_label"}.issubset(edits.columns):
         raise ValueError("corrections.csv requires relative_path and new_label columns.")
     edits = edits[edits.new_label.astype(str).str.strip() != ""].copy()
-    if edits.empty:
-        raise ValueError("corrections.csv has no corrections. Do not present unchanged labels as corrected data.")
+    if edits.empty and not allow_empty:
+        raise ValueError("corrections.csv has no corrections. Use --allow-empty-corrections only after an audit found no verified label errors.")
     if edits.relative_path.duplicated().any():
         raise ValueError("corrections.csv has duplicated relative_path values.")
     changes = dict(zip(edits.relative_path, edits.new_label))
@@ -155,8 +158,11 @@ def corrected_frame(frame: pd.DataFrame, csv_path: Path | None) -> pd.DataFrame:
         raise ValueError(f"Unknown correction path(s), first 5: {sorted(unknown)[:5]}")
     result = frame.copy()
     result["label"] = result.apply(lambda row: changes.get(row.relative_path, row.label), axis=1)
-    print(f"Applied {len(changes)} verified label corrections.")
-    return result
+    if changes:
+        print(f"Applied {len(changes)} verified label corrections.")
+    else:
+        print("Label audit completed: no verified label corrections were found.")
+    return result, len(changes)
 
 
 def split_frame(frame: pd.DataFrame, kind: str, seed: int) -> dict[str, pd.DataFrame]:
@@ -297,6 +303,8 @@ def train_one(spec: RunSpec, frame: pd.DataFrame, strategy: tf.distribute.Strate
         "test_macro_f1": float(macro_f1), "elapsed_seconds": round(elapsed, 2),
         "classes": labels, "batch_size": batch_size,
     }
+    if spec.name == "improved_corrected":
+        metrics["applied_label_corrections"] = args.applied_label_corrections
     if "train_dev" in partitions:
         train_dev_ds = dataset(partitions["train_dev"], label_ids, args.image_size, batch_size, False, args.seed)
         train_loss, train_accuracy = best.evaluate(train_ds, verbose=0)
@@ -321,8 +329,11 @@ def main() -> None:
     strategy = setup(args.seed)
     chosen_runs = RUNS[:3] if args.run_mode == "original" else RUNS[3:] if args.run_mode == "corrected" else RUNS
     corrected = None
+    args.applied_label_corrections = 0
     if any(spec.name == "improved_corrected" for spec in chosen_runs):
-        corrected = corrected_frame(frame, args.corrections_csv)
+        corrected, args.applied_label_corrections = corrected_frame(
+            frame, args.corrections_csv, args.allow_empty_corrections
+        )
     packages = args.output_dir / "packages"
     packages.mkdir(exist_ok=True)
     summary = []
