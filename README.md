@@ -19,7 +19,7 @@ manifest and experiment configuration. Test labels are never used for model sele
 2. In Notebook settings select **Accelerator → GPU T4 x2** and turn **Internet on**, because the notebook clones this GitHub repository.
 3. Upload `notebooks/train_on_kaggle.ipynb`, set `DATA_DIR`, keep `RUN_MODE = 'original'` and `CORRECTIONS_CSV = None`, then run all cells. This creates the first three ZIPs and a review-candidate CSV.
 4. Review candidate images manually and create a small Kaggle Dataset containing `corrections.csv`. Its columns are `relative_path,old_label,new_label,reason`.
-5. Add that correction dataset as Input, set `RUN_MODE = 'corrected'` and set `CORRECTIONS_CSV` to its path. Run the notebook again to create the fourth ZIP.
+5. Add that correction dataset as Input, then upload `notebooks/train_phase2_on_kaggle.ipynb`. Set `CORRECTIONS_CSV` to its exact Input path and run it to create the fourth ZIP. This notebook always runs only the corrected-label experiment.
 
 Kaggle mounts inputs at `/kaggle/input/<dataset-slug>/`. For the original Ivan Feliciano dataset, set `DATA_DIR` to the **dataset root**; the script searches below it and derives labels from the original filenames: `P*.jpg` = `pollen`, `NP*.jpg` = `no_pollen`. It also supports the alternative layout with one folder per class. The exact slug is shown in the Input panel, for example:
 
