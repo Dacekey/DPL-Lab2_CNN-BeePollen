@@ -24,7 +24,7 @@ manifest and experiment configuration. Test labels are never used for model sele
 Kaggle mounts inputs at `/kaggle/input/<dataset-slug>/`. For the original Ivan Feliciano dataset, set `DATA_DIR` to the **dataset root**; the script searches below it and derives labels from the original filenames: `P*.jpg` = `pollen`, `NP*.jpg` = `no_pollen`. It also supports the alternative layout with one folder per class. The exact slug is shown in the Input panel, for example:
 
 ```python
-DATA_DIR = "/kaggle/input/honey-bee-pollen"
+DATA_DIR = "/kaggle/input/datasets/ivanfel/honey-bee-pollen"
 CORRECTIONS_CSV = "/kaggle/input/bee-pollen-corrections/corrections.csv"
 ```
 
