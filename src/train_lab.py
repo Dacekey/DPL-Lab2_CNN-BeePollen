@@ -49,6 +49,8 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--batch-per-replica", type=int, default=32)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--export-manifest-only", action="store_true")
+    parser.add_argument("--run-mode", choices=("original", "corrected", "all"), default="all",
+                        help="original: runs 1-3; corrected: run 4 only; all: all four (needs corrections).")
     return parser.parse_args()
 
 
@@ -274,15 +276,23 @@ def main() -> None:
     if args.export_manifest_only:
         return
     strategy = setup(args.seed)
-    corrected = corrected_frame(frame, args.corrections_csv)
+    chosen_runs = RUNS[:3] if args.run_mode == "original" else RUNS[3:] if args.run_mode == "corrected" else RUNS
+    corrected = None
+    if any(spec.name == "improved_corrected" for spec in chosen_runs):
+        corrected = corrected_frame(frame, args.corrections_csv)
     packages = args.output_dir / "packages"
     packages.mkdir(exist_ok=True)
     summary = []
-    for spec in RUNS:
+    for spec in chosen_runs:
         print(f"\n{'=' * 18} {spec.name} {'=' * 18}")
         summary.append(train_one(spec, corrected if spec.name == "improved_corrected" else frame, strategy, args))
         archive = shutil.make_archive(str(packages / spec.name), "zip", root_dir=args.output_dir / spec.name)
         print(f"Saved {archive}")
+        if spec.name == "improved_original":
+            predictions = pd.read_csv(args.output_dir / spec.name / "test_predictions.csv")
+            candidates = predictions[predictions.label != predictions.predicted_label].sort_values("confidence")
+            candidates.to_csv(args.output_dir / "correction_review_candidates.csv", index=False)
+            print(f"Manual-review candidates: {args.output_dir / 'correction_review_candidates.csv'}")
     pd.DataFrame(summary).to_csv(args.output_dir / "metrics_summary.csv", index=False)
     print(f"Done. Four ZIP files: {packages}")
 
