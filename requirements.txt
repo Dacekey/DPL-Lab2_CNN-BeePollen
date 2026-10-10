@@ -1,0 +1,6 @@
+# Kaggle's TensorFlow image already includes these packages.
+tensorflow>=2.13
+numpy
+pandas
+scikit-learn
+matplotlib

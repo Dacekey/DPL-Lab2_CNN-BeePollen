@@ -1,0 +1,14 @@
+Phần I
+
+    Download bộ dữ liệu Bee pollen (ong mang phấn) (https://www.kaggle.com/datasets/ivanfel/honey-bee-pollen/data)
+    Tự chia thành các tập train/val/test theo tỉ lệ 7:1:2
+    Tự define cấu trúc của mô hình CNN thực hiện training model
+    Đánh giá mô hình
+
+Phần II.
+
+    Đã train với dữ liệu trên Kaggle, tìm cách improve performance trên bộ dữ liệu này.
+    Chia thêm tập train-dev, training lại model trên tập train/train-val để kiểm tra tình trạng mismatched distribution
+    Thực hiện correct lại label sau đó chia lại tỷ lệ giống như bước 1 và đánh giá model.
+
+=> Đưa ra nhận xét từng bước cải tiến kết quả, và so sánh kết quả trên 2 bộ DL (chưa correct và correct data)
