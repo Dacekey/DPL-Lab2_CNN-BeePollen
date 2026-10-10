@@ -30,6 +30,8 @@ CORRECTIONS_CSV = "/kaggle/input/bee-pollen-corrections/corrections.csv"
 
 Never write input data to `/kaggle/input`: it is read-only. The program writes its artefacts to `/kaggle/working`.
 
+The Kaggle distribution may contain duplicate nested copies of the same source images. The training script removes byte-identical images with SHA-256 **before** splitting, preventing duplicate-image leakage between train, validation, and test.
+
 ## Label correction is manual
 
 There is no valid automatic way to correct labels from a model's predictions. The first Kaggle run creates `correction_review_candidates.csv` from the incorrect predictions of the improved model. These are **review candidates**, not automatically wrong labels: manually inspect them first. To produce a full file listing, run:

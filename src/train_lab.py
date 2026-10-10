@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import gc
+import hashlib
 import json
 import random
 import shutil
@@ -87,6 +88,8 @@ def samples(data_dir: Path) -> pd.DataFrame:
     flat_original_layout = len(parent_names) == 1
     rows = []
     unrecognised = []
+    seen_hashes: dict[str, tuple[Path, str]] = {}
+    duplicate_count = 0
     for path in image_paths:
         if flat_original_layout:
             filename = path.name.upper()
@@ -99,6 +102,17 @@ def samples(data_dir: Path) -> pd.DataFrame:
                 continue
         else:
             label = path.parent.name
+        # The Kaggle distribution can contain two copies of PollenDataset in
+        # nested folders. Deduplicate bytes before splitting, otherwise one
+        # copy can be in train and the other in validation/test (data leakage).
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        previous = seen_hashes.get(digest)
+        if previous:
+            if previous[1] != label:
+                raise ValueError(f"Identical image bytes have conflicting labels: {previous[0]} vs {path}")
+            duplicate_count += 1
+            continue
+        seen_hashes[digest] = (path, label)
         rows.append({"path": str(path.resolve()),
                      "relative_path": path.relative_to(data_dir).as_posix(),
                      "label": label})
@@ -110,6 +124,8 @@ def samples(data_dir: Path) -> pd.DataFrame:
         raise ValueError("Only one class was found. Check DATA_DIR and the dataset layout.")
     print("Detected layout:", "flat P/NP filename labels" if flat_original_layout else "class folders")
     print("Class counts:", frame.label.value_counts().to_dict())
+    if duplicate_count:
+        print(f"Ignored {duplicate_count} byte-identical duplicate image(s) before splitting.")
     return frame
 
 
